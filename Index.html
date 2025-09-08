@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resource Management During Crises</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a;        /* slate-900 */
+      --card:#0b1229;      /* slightly lighter */
+      --muted:#94a3b8;     /* slate-400 */
+      --text:#e2e8f0;      /* slate-200 */
+      --brand:#60a5fa;     /* blue-400 */
+      --brand-2:#22d3ee;   /* cyan-400 */
+      --accent:#34d399;    /* emerald-400 */
+      --border:#1f2a44;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, rgba(96,165,250,.15), transparent 60%),
+                  radial-gradient(900px 500px at 110% 10%, rgba(34,211,238,.12), transparent 55%),
+                  var(--bg);
+      color:var(--text); line-height:1.5; padding:24px;
+    }
+    .container{max-width:1100px; margin:0 auto;}
+    header{margin-bottom:16px;}
+    h1{font-weight:700; letter-spacing:.2px; margin:0 0 8px; font-size:clamp(22px, 3.2vw, 32px);}
+    .subtitle{color:var(--muted); margin:0 0 20px;}
+
+    .tabs{
+      display:flex; gap:8px; flex-wrap:wrap;
+      background:rgba(255,255,255,.04); padding:6px; border-radius:12px; border:1px solid var(--border);
+    }
+    .tab-btn{
+      appearance:none; border:none; cursor:pointer; padding:10px 14px;
+      border-radius:10px; color:var(--text); background:transparent; font-weight:600;
+      transition:all .2s ease; outline:none;
+    }
+    .tab-btn:hover{background:rgba(255,255,255,.06)}
+    .tab-btn[aria-selected="true"]{
+      background:linear-gradient(135deg, rgba(96,165,250,.25), rgba(34,211,238,.22));
+      border:1px solid rgba(96,165,250,.35);
+      box-shadow: 0 6px 18px rgba(32, 111, 255, .18) inset, 0 2px 18px rgba(34,211,238,.12);
+    }
+
+    .panel{
+      margin-top:14px; background:var(--card); border:1px solid var(--border);
+      border-radius:14px; padding:18px; display:none;
+    }
+    .panel.active{display:block}
+
+    .grid{
+      display:grid; gap:14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      margin-top:10px;
+    }
+    .card{
+      background:rgba(255,255,255,.03); border:1px solid var(--border);
+      border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px;
+    }
+    .card h3{margin:0 0 6px; font-size:18px}
+    .card p{margin:0; color:var(--muted); font-size:14px}
+    .link-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
+    .link{
+      text-decoration:none; font-weight:600; color:#0b1229;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      padding:9px 12px; border-radius:10px; display:inline-flex; align-items:center; gap:8px;
+      transition:transform .12s ease, filter .12s ease;
+      box-shadow: 0 6px 18px rgba(96,165,250,.25);
+    }
+    .link.secondary{
+      background:linear-gradient(135deg, #a7f3d0, var(--accent));
+      box-shadow:0 6px 18px rgba(52,211,153,.22);
+    }
+    .link:hover{transform: translateY(-1px); filter:brightness(1.02)}
+    .muted{color:var(--muted); font-size:14px}
+    .list{margin:8px 0 0 18px}
+    .list li{margin:4px 0}
+    footer{margin-top:22px; color:var(--muted); font-size:13px; text-align:center}
+    .tag{display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted); font-size:12px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Resource Management During Crises</h1>
+      <p class="subtitle">A lightweight hub to navigate suppliers, demands, allocation mapping, and cross-utility tools.</p>
+    </header>
+
+    <!-- Tabs -->
+    <div class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab-btn" role="tab" id="tab-supplier" aria-controls="panel-supplier" aria-selected="true">Resource Supplier</button>
+      <button class="tab-btn" role="tab" id="tab-demand" aria-controls="panel-demand" aria-selected="false">Demand Provider</button>
+      <button class="tab-btn" role="tab" id="tab-mapping" aria-controls="panel-mapping" aria-selected="false">Mapping & Allocation</button>
+      <button class="tab-btn" role="tab" id="tab-cross" aria-controls="panel-cross" aria-selected="false">Cross Utility</button>
+    </div>
+
+    <!-- Panels -->
+    <!-- 1) Resource Supplier -->
+    <section class="panel active" id="panel-supplier" role="tabpanel" aria-labelledby="tab-supplier">
+      <span class="tag">Supplier Workbench</span>
+      <div class="grid">
+        <div class="card">
+          <h3>Register Supplier</h3>
+          <p>Onboard a new supplier with identity and capability details.</p>
+          <div class="link-row">
+            <!-- Replace href with your actual page -->
+            <a class="link" href="supplier-register.html">🚀 Open Register Page</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Set Resources</h3>
+          <p>Declare available resources (Water, Food, Medical, Cloths) and update quantities.</p>
+          <div class="link-row">
+            <!-- Replace href with your actual page -->
+            <a class="link secondary" href="supplier-set-resources.html">📦 Open Resources Page</a>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Supplier Dashboard</h3>
+          <p>View all your submitted resources, flags, and compliance information.</p>
+          <div class="link-row">
+            <a class="link" href="supplier.html">📊 Supplier Main Page</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2) Demand Provider -->
+    <section class="panel" id="panel-demand" role="tabpanel" aria-labelledby="tab-demand">
+      <span class="tag">Demand Intake</span>
+      <div class="grid">
+        <div class="card">
+          <h3>Create / Manage Demands</h3>
+          <p>Register crises demand entries, set resource requirements and criticality.</p>
+          <div class="link-row">
+            <a class="link" href="demand-provider.html">📝 Open Demand Provider</a>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Demand Review</h3>
+          <p>Browse existing demands, statuses, and last updates.</p>
+          <div class="link-row">
+            <a class="link secondary" href="demand.html">🔎 Demand Overview Page</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3) Mapping & Allocation -->
+    <section class="panel" id="panel-mapping" role="tabpanel" aria-labelledby="tab-mapping">
+      <span class="tag">Allocator</span>
+      <div class="grid">
+        <div class="card">
+          <h3>Mapping & Allocation</h3>
+          <p>Run allocations, view matrices, and export CSVs.</p>
+          <div class="link-row">
+            <a class="link" href="mapping-allocation.html">🧭 Open Mapping & Allocation</a>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Allocation Reports</h3>
+          <p>Inspect allocation matrices by ID, latest allocations by demand/resource.</p>
+          <div class="link-row">
+            <a class="link secondary" href="allocation-reports.html">📑 Allocation Reports</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4) Cross Utility -->
+    <section class="panel" id="panel-cross" role="tabpanel" aria-labelledby="tab-cross">
+      <span class="tag">Tools</span>
+      <div class="grid">
+        <div class="card">
+          <h3>Cross Utility Tools</h3>
+          <p>Shared utilities: address book, faucets, network switchers, and diagnostics.</p>
+          <div class="link-row">
+            <a class="link" href="cross-utility.html">🧰 Open Cross Utility</a>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Guides & Onboarding</h3>
+          <p>MetaMask setup, Sepolia onboarding, and developer quickstarts.</p>
+          <div class="link-row">
+            <a class="link secondary" href="guides.html">📚 Open Guides</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p class="muted">Tip: Update each link above to point at your actual pages (e.g., <code>supplier-register.html</code>, <code>mapping-allocation.html</code>).</p>
+    </footer>
+  </div>
+
+  <script>
+    // Accessible tab behavior
+    const tabs = Array.from(document.querySelectorAll('.tab-btn'));
+    const panels = Array.from(document.querySelectorAll('.panel'));
+
+    function activateTab(id){
+      tabs.forEach(t=>{
+        const selected = t.id === id;
+        t.setAttribute('aria-selected', String(selected));
+      });
+      panels.forEach(p=>{
+        p.classList.toggle('active', 'panel-' + p.id.split('-')[1] ? ('tab-' + p.id.split('-')[1] === id) : false);
+      });
+      // direct match by aria-controls for robustness
+      const btn = document.getElementById(id);
+      const targetId = btn.getAttribute('aria-controls');
+      panels.forEach(p => p.classList.toggle('active', p.id === targetId));
+    }
+
+    tabs.forEach(btn=>{
+      btn.addEventListener('click', ()=>activateTab(btn.id));
+      btn.addEventListener('keydown', (e)=>{
+        const idx = tabs.indexOf(btn);
+        if(e.key === 'ArrowRight'){ (tabs[idx+1] || tabs[0]).focus(); }
+        if(e.key === 'ArrowLeft'){ (tabs[idx-1] || tabs[tabs.length-1]).focus(); }
+        if(e.key === 'Enter' || e.key === ' '){ activateTab(btn.id); }
+      });
+    });
+
+    // default active tab
+    activateTab('tab-supplier');
+  </script>
+</body>
+</html>

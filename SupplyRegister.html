@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SupplierRegistryoz — Sepolia dApp</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js" crossorigin="anonymous"></script>
+<style>
+ body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f8f9fa;
+      color: #333;
+    }
+    h2 {
+      color: #5a2d82; /* purple accent */
+    }
+    label {
+      font-weight: bold;
+      color: #222;
+    }
+    select, input {
+      padding: 6px;
+      margin-top: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #007bff; /* blue */
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #444;
+    }
+    #contractBalance {
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 8px;
+      border-radius: 4px;
+      color: #333;
+    }
+    #withdrawResult {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      background: #f1f1f1;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    #withdrawResult.success {
+      background: #e6ffed;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    #withdrawResult.error {
+      background: #ffe6e6;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 8px; text-align: left; border: 1px solid #ccc; }
+  .muted { color: #666; font-size: 0.9rem; }
+  .error { color: #b71c1c; }
+  .success { color: #1b5e20; }
+</style>
+</head>
+<body>
+
+<h1>SupplierRegistryoz dApp</h1>
+
+<button id="btn-connect">Connect MetaMask</button>
+<button id="btn-switch">Switch to Sepolia</button>
+<div>
+  <label>Contract Address:
+    <input id="contractAddress" placeholder="f09A1E7Fd6b629FD96a062359E0e42B970289" style="width:420px" />
+  </label>
+  <button id="btn-save">Save</button>
+</div>
+<div id="status" class="muted">Not connected.</div>
+
+<h2>Registration Status</h2>
+<button id="btn-openReg">Open Registration</button>
+<button id="btn-closeReg">Close Registration</button>
+<span id="regStatus">Unknown</span>
+
+<h2>Actions</h2>
+<button id="btn-totalProviders">Get Total Providers</button>
+<pre id="output"></pre>
+
+<h2>Register Provider</h2>
+<div>
+  <label>Name: <input id="provName" /></label>  <label>Location:</label> <select id="provLocation"> <option value="">-- Select Location --</option> <option>Shivaji Nagar</option> <option>Dehu Road</option> <option>Talegaon</option>    <option>Hadapsar</option>
+          <option>Pimple Saudagar</option>
+          <option>Kharadi</option>
+          <option>Wakad / Magarpatta</option>
+          <option>Vishrantwadi</option>
+          <option>Kalyani Nagar</option>
+          <option>Kothrud / Karvenagar</option>
+        </select>
+               <label>Resource Types:</label>  <label><input type="checkbox" class="resType" value="0"> Water</label>
+  <label><input type="checkbox" class="resType" value="1"> Food</label>
+  <label><input type="checkbox" class="resType" value="2"> Medical</label>
+  <label><input type="checkbox" class="resType" value="3"> Cloths</label><br/>
+  <button id="btn-registerProv">Register (pay 100000 wei)</button>
+</div>
+
+<h2>Get Provider by ID</h2>
+<div>
+  <label>Provider ID: <input id="provId" type="number" min="1" /></label>
+  <button id="btn-getProvider">Fetch Provider</button>
+  <pre id="providerDetails"></pre>
+</div>
+
+<h2>Get All Providers (Admin/Owner Only)</h2>
+<div>
+  <button id="btn-getAllProviders">Fetch All Providers</button>
+  <table id="providersTable" style="margin-top:10px;">
+    <thead>
+      <tr>
+        <th>ID</th><th>Name</th><th>Location</th><th>Wallet</th><th>Resources</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<h2>Contract Balance (Admin/Owner Only)</h2>
+<div>
+  <button id="btn-refreshBalance">Refresh Balance</button>
+  
+  <pre id="contractBalance">Balance: 0 wei</pre>
+</div>
+
+<h2>Withdraw Ether (Admin/Owner Only)</h2>
+<div>
+  <label>Amount to withdraw (wei). 
+    <input id="withdrawAmount" type="number" min="0" step="1" />
+  </label>
+  <button id="btn-withdraw">Withdraw</button>
+  <pre id="withdrawResult"></pre>
+</div>
+
+<script>
+const CHAIN_ID_HEX = '0xaa36a7'; // Sepolia
+const REGISTRATION_FEE_WEI = 100000n; // 100000 wei
+let provider, signer, contract;
+
+const ABI = [
+  {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"openRegistration","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[],"name":"closeRegistration","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[],"name":"registrationOpen","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"totalProviders","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"string","name":"_name","type":"string"},{"internalType":"string","name":"_location","type":"string"},{"internalType":"uint8[]","name":"_resourceTypes","type":"uint8[]"}],"name":"registerProvider","outputs":[],"stateMutability":"payable","type":"function"},
+  {"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getProvider","outputs":[{"internalType":"uint256","name":"uid","type":"uint256"},{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"location","type":"string"},{"internalType":"string[]","name":"resourceStrings","type":"string[]"}],"stateMutability":"view","type":"function"},
+  {"inputs":[],"name":"getAllProviderDetails","outputs":[{"internalType":"uint256[]","name":"ids","type":"uint256[]"},{"internalType":"address[]","name":"wallets","type":"address[]"},{"internalType":"string[]","name":"names","type":"string[]"},{"internalType":"string[]","name":"locations","type":"string[]"},{"internalType":"string[][]","name":"resourceStrings","type":"string[][]"}],"stateMutability":"view","type":"function"},
+  {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"withdrawEther","outputs":[],"stateMutability":"nonpayable","type":"function"}
+];
+
+function $(id) { return document.getElementById(id); }
+function setStatus(msg, cls='') { const el=$('status'); el.innerText=msg; el.className=cls||'muted'; }
+function parseEthersError(e) {
+  if(!e) return 'Unknown error';
+  if(e.reason) return e.reason;
+  if(e.error && e.error.message) return e.error.message;
+  if(e.data && typeof e.data==='string') return e.data;
+  if(e.message) return e.message;
+  return JSON.stringify(e);
+}
+function ensureContract() {
+  const addr=$('contractAddress').value.trim();
+  if(!addr||!ethers.isAddress(addr)) throw new Error('Set a valid contract address first.');
+  if(!signer) throw new Error('Connect MetaMask first.');
+  contract=new ethers.Contract(addr, ABI, signer);
+  return contract;
+}
+
+async function connect(){
+  if(!window.ethereum){ alert('MetaMask not found'); return; }
+  provider=new ethers.BrowserProvider(window.ethereum);
+  try{
+    await provider.send('eth_requestAccounts', []);
+    signer=await provider.getSigner();
+    const net=await provider.getNetwork();
+    setStatus(`Connected: ${await signer.getAddress()} on chain ${net.chainId}`);
+    const saved=localStorage.getItem('supplierRegistryoz_address');
+    if(saved) $('contractAddress').value=saved;
+    if($('contractAddress').value.trim()){ try{ ensureContract(); await refreshRegStatus(); await $('btn-refreshBalance').onclick(); }catch(_){} }
+  }catch(e){ setStatus('Connection failed: '+parseEthersError(e),'error'); }
+}
+async function switchToSepolia(){
+  if(!window.ethereum){ alert('MetaMask not found'); return; }
+  try{
+    await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:CHAIN_ID_HEX}]});
+    setStatus('Switched to Sepolia');
+  }catch(e){
+    if(e.code===4902){
+      try{
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:CHAIN_ID_HEX,chainName:'Sepolia',nativeCurrency:{name:'SepoliaETH',symbol:'ETH',decimals:18},rpcUrls:['https://rpc.sepolia.org'],blockExplorerUrls:['https://sepolia.etherscan.io']}]});
+        setStatus('Sepolia added. Switch again.');
+      }catch(addErr){ setStatus('Add chain failed: '+parseEthersError(addErr),'error'); }
+    }else setStatus('Switch error: '+parseEthersError(e),'error');
+  }
+}
+
+$('btn-connect').onclick=connect;
+$('btn-switch').onclick=switchToSepolia;
+$('btn-save').onclick=()=>{
+  const addr=$('contractAddress').value.trim();
+  if(!ethers.isAddress(addr)){ alert('Invalid contract address'); return; }
+  localStorage.setItem('supplierRegistryoz_address', addr);
+  setStatus('Saved contract address.');
+  if(signer){ try{ ensureContract(); refreshRegStatus(); }catch(_){} }
+};
+
+$('btn-openReg').onclick=async()=>{ try{ ensureContract(); const tx=await contract.openRegistration(); setStatus(`Tx ${tx.hash} sent, waiting...`); await tx.wait(); await refreshRegStatus(); setStatus('Registration opened','success'); }catch(e){ setStatus('Error: '+parseEthersError(e),'error'); } };
+$('btn-closeReg').onclick=async()=>{ try{ ensureContract(); const tx=await contract.closeRegistration(); setStatus(`Tx ${tx.hash} sent, waiting...`); await tx.wait(); await refreshRegStatus(); setStatus('Registration closed','success'); }catch(e){ setStatus('Error: '+parseEthersError(e),'error'); } };
+
+async function refreshRegStatus(){ try{ ensureContract(); const open=await contract.registrationOpen(); $('regStatus').innerText=open?'Open':'Closed'; }catch(_){ $('regStatus').innerText='Error'; } }
+
+$('btn-totalProviders').onclick=async()=>{ try{ ensureContract(); const n=await contract.totalProviders(); $('output').innerText='Total Providers: '+n.toString(); }catch(e){ $('output').innerText='Error: '+parseEthersError(e); } };
+
+$('btn-registerProv').onclick=async()=>{
+  try{
+    ensureContract();
+    const name=$('provName').value.trim();
+    const location=$('provLocation').value.trim();
+    const resources=Array.from(document.querySelectorAll('.resType:checked')).map(cb=>parseInt(cb.value));
+    if(!name||!location||resources.length===0){ alert('Fill name, location, resources'); return; }
+    setStatus('Sending registration tx...');
+    const tx=await contract.registerProvider(name, location, resources, { value: REGISTRATION_FEE_WEI });
+    setStatus(`Tx ${tx.hash} sent, waiting...`);
+    await tx.wait();
+    setStatus('Provider registered successfully','success');
+    await refreshRegStatus();
+    await $('btn-refreshBalance').onclick();
+  }catch(e){ setStatus('Registration failed: '+parseEthersError(e),'error'); }
+};
+
+$('btn-getProvider').onclick=async()=>{
+  try{
+    ensureContract();
+    const id=parseInt($('provId').value.trim());
+    if(isNaN(id)||id<1){ alert('Invalid ID'); return; }
+    const [uid, name, loc, res]=await contract.getProvider(id);
+    $('providerDetails').innerText=`ID: ${uid}\nName: ${name}\nLocation: ${loc}\nResources: ${res.join(', ')}`;
+  }catch(e){ $('providerDetails').innerText='Error: '+parseEthersError(e); }
+};
+
+$('btn-getAllProviders').onclick=async()=>{
+  try{
+    ensureContract();
+    const [ids,wallets,names,locs,res]=await contract.getAllProviderDetails();
+    const tbody=$('providersTable').querySelector('tbody');
+    tbody.innerHTML='';
+    if(ids.length===0){ tbody.innerHTML='<tr><td colspan="5" style="text-align:center;">No providers found</td></tr>'; return; }
+    for(let i=0;i<ids.length;i++){
+      const row=document.createElement('tr');
+      row.innerHTML=`<td>${ids[i]}</td><td>${names[i]}</td><td>${locs[i]}</td><td>${wallets[i]}</td><td>${res[i].join(', ')}</td>`;
+      tbody.appendChild(row);
+    }
+  }catch(e){ alert('Fetch all failed: '+parseEthersError(e)); }
+};
+
+$('btn-refreshBalance').onclick=async()=>{
+  try{ ensureContract();
+  const ownerAddr=await contract.owner();
+    const signerAddr=(await signer.getAddress()).toLowerCase(); 
+  if(signerAddr!==ownerAddr.toLowerCase()){ alert(`Only owner (${ownerAddr}) can see balance`); return; }
+  const addr=contract.target??contract.address; const bal=await provider.getBalance(addr); $('contractBalance').innerText='Balance: '+bal.toString()+' wei'; }catch(e){ $('contractBalance').innerText='Error: '+parseEthersError(e); }
+};
+
+$('btn-withdraw').onclick=async()=>{
+  try{
+    ensureContract();
+    const ownerAddr=await contract.owner();
+    const signerAddr=(await signer.getAddress()).toLowerCase();
+    if(signerAddr!==ownerAddr.toLowerCase()){ alert(`Only owner (${ownerAddr}) can withdraw`); return; }
+    const addr=contract.target??contract.address;
+    const balance=await provider.getBalance(addr);
+    if(balance===0n){ $('withdrawResult').innerText='Contract balance is 0 wei'; return; }
+    const val=$('withdrawAmount').value.trim();
+    let amountWei;
+    if(!val) amountWei=balance; else {
+      try{ amountWei=BigInt(val); }catch(_){ alert('Invalid wei amount'); return; }
+      if(amountWei<=0n){ alert('Enter amount > 0'); return; }
+      if(amountWei>balance){ alert(`Requested ${amountWei} wei > balance ${balance} wei`); return; }
+    }
+    setStatus('Sending withdraw tx...');
+    const tx=await contract.withdrawEther(ownerAddr, amountWei);
+    $('withdrawResult').innerText=`Tx submitted: ${tx.hash} — waiting...`;
+    await tx.wait();
+    $('withdrawResult').innerText=`Withdraw successful: ${amountWei} wei → ${ownerAddr}\nTx: ${tx.hash}`;
+    setStatus('Withdraw successful','success');
+    await $('btn-refreshBalance').onclick();
+  }catch(e){
+    const msg=parseEthersError(e);
+    $('withdrawResult').innerText='Withdraw failed: '+msg;
+    setStatus('Withdraw failed: '+msg,'error');
+  }
+};
+
+window.addEventListener('load', async()=>{
+  const saved=localStorage.getItem('supplierRegistryoz_address');
+  if(saved) $('contractAddress').value=saved;
+  if(window.ethereum){
+    provider=new ethers.BrowserProvider(window.ethereum);
+    try{
+      await provider.send('eth_requestAccounts', []);
+      signer=await provider.getSigner();
+      const net=await provider.getNetwork();
+      setStatus(`Auto-connected: ${await signer.getAddress()} on chain ${net.chainId}`);
+      if($('contractAddress').value.trim()){ try{ ensureContract(); await refreshRegStatus(); await $('btn-refreshBalance').onclick(); }catch(_){} }
+    }catch(e){ setStatus('Auto-connect failed: '+parseEthersError(e),'error'); }
+  }
+});
+if(window.ethereum){
+  window.ethereum.on && window.ethereum.on('accountsChanged',()=>{ setStatus('Account changed — reconnect if needed'); });
+  window.ethereum.on && window.ethereum.on('chainChanged',()=>{ location.reload(); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DemandProvider1 – Frontend</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.11.1/dist/ethers.umd.min.js"></script>
+  <style>
+    :root { --bg:#f8f9fa; --card:#f8f9fa; --muted:#222; --accent:#5a2d82; --text:#000; --danger:#ef4444; --ok:#10b981; }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    h1,h2{margin:0 0 .5rem} h1{font-size:1.4rem} h2{font-size:1.1rem;color:var(--accent)}
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    .grid{display:grid;gap:16px}
+    .g2{grid-template-columns:repeat(2,1fr)}
+    .card{background:var(--card);border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    label{display:block;font-size:.85rem;color:var(--muted);margin:.5rem 0 .25rem}
+    input,select,button,textarea{width:100%;padding:10px;border-radius:12px;border:1px solid #1f2937;background:#fff;color:#000}
+    button{cursor:pointer;background:#0ea5e9;border-color:#0ea5e9;font-weight:600;color:#fff}
+    button.secondary{background:#111827;border-color:#374151}
+    button.warn{background:var(--danger);border-color:var(--danger)}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .row > *{flex:1}
+    table { width:100%;border-collapse:collapse;margin-top:8px;color:#000;background:#fff; }
+    th,td{border:1px solid #000;padding:8px 10px;text-align:left;font-size:.92rem;background:#fff}
+    .hint{color:var(--muted);font-size:.85rem}
+    .status{white-space:pre-wrap;background:#fff;border:1px dashed #1f2937;padding:10px;border-radius:12px;margin-top:10px;color:#000}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="row" style="justify-content:space-between;">
+        <h1>DemandProvider1 – dApp</h1>
+        <div class="row" style="flex:0 0 auto;min-width:280px">
+          <button id="btnConnect">Connect Wallet</button>
+          <button class="secondary" id="btn-refresh">Refresh</button>
+        </div>
+      </div>
+      <div id="whoami" class="hint" style="margin-top:8px">Not connected</div>
+      <div id="network" class="hint">Network: -</div>
+      <div class="status" id="statusBox">Ready.</div>
+    </div>
+
+    <div class="grid g2">
+      <!-- Owner/Admin -->
+      <div class="card">
+        <h2>Owner / Admin</h2>
+        <label>Resource Mapping Owner</label>
+        <div class="row">
+          <input id="in-rmo" placeholder="0x… address" />
+          <button id="btn-set-rmo">Set</button>
+        </div>
+        <hr>
+        <label>Register Provider</label>
+        <div class="row">
+          <input id="in-prov-did" placeholder="DID" />
+          <input id="in-prov-name" placeholder="Provider name" />
+        </div>
+        <button id="btn-register">Register Provider</button>
+      </div>
+
+      <!-- Create Demand -->
+      <div class="card">
+        <h2>Create Demand</h2>
+        <label>DID</label>
+        <input id="in-cr-did" placeholder="Registered DID" />
+        <label>Items</label>
+        <div id="items"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="secondary" id="btn-add-item">+ Add Item</button>
+          <button id="btn-create">Create Demand</button>
+        </div>
+      </div>
+
+      <!-- View Demand Matrix -->
+      <div class="card">
+        <h2>View Demand Matrix</h2>
+        <button id="btn-matrix">Load Matrix</button>
+        <button class="download-btn" id="btn-download-csv" style="display:none;">Download CSV</button>
+        <div id="matrix-wrap"></div>
+      </div>
+
+      <!-- View by DNo -->
+      <div class="card">
+        <h2>View by DNo</h2>
+        <div class="row">
+          <input id="in-dno" type="number" placeholder="DNo" />
+          <button id="btn-by-dno">Load</button>
+        </div>
+        <div id="bydno-wrap"></div>
+      </div>
+
+      <!-- Aggregates -->
+      <div class="card">
+        <h2>Aggregate Demands</h2>
+        <button id="btn-agg">Load Aggregates</button>
+        <div id="agg-wrap"></div>
+      </div>
+
+      <div class="card">
+        <h2>Misc</h2>
+        <button id="btn-total">View Total Demand Nos</button>
+        <div id="misc-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const EXPECTED_CHAIN_ID = "0xaa36a7"; // Sepolia
+const CONTRACT_ADDRESS = "0x20DB3383ED5972a67b9d0c6a2F51f655265E742F";
+
+// Minimal ABI
+const ABI = [
+  "function owner() view returns (address)",
+  "function admin() view returns (address)",
+  "function setResourceMappingOwner(address) external",
+  "function registerProvider(string,string) external",
+  "function createDemandRequest(string,uint8[],uint256[],uint8[]) external",
+  "function viewDemandMatrix() view returns(uint256[],string[],string[],uint256[][],string[][],uint256[][])",
+  "function viewDemandsByDNo(uint256) view returns(string,string[],uint256[],uint8[],string[],uint256[],uint256[])",
+  "function viewTotalDemandNos() view returns(uint256)",
+  "function viewAggregateDemands() view returns(string[],uint256[])"
+];
+
+let provider, signer, contract, myAddr, ownerAddr, adminAddr;
+let lastMatrixCSV = "";
+function setStatus(msg, err=false){ 
+  document.getElementById('statusBox').textContent = msg;
+  document.getElementById('statusBox').style.color = err?'red':'black';
+}
+
+function readableError(e){
+  return (e?.shortMessage || e?.info?.error?.message || e?.message || String(e))
+    .replace("execution reverted: ","")
+    .replace("VM Exception while processing transaction: reverted with reason string ","");
+}
+
+async function connect(){
+  try{
+    if(!window.ethereum){ setStatus("MetaMask not found",true); return; }
+    await window.ethereum.request({method:"eth_requestAccounts"});
+    provider = new ethers.BrowserProvider(window.ethereum);
+    const net = await provider.getNetwork();
+    if(net.chainId !== BigInt(EXPECTED_CHAIN_ID)) setStatus("⚠ Wrong network (Sepolia required)", true);
+    signer = await provider.getSigner();
+    myAddr = await signer.getAddress();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    ownerAddr = await contract.owner();
+    adminAddr = await contract.admin();
+    document.getElementById('whoami').textContent = `Connected: ${myAddr}`;
+    document.getElementById('network').textContent = `Network: ${net.chainId.toString()} | Owner: ${ownerAddr}`;
+    setStatus("Connected");
+  }catch(e){ console.error(e); setStatus(readableError(e),true); }
+}
+
+// UI helpers
+function addItemRow(){
+  const div = document.createElement('div');
+  div.className = 'row';
+  div.innerHTML = `
+    <select class="item-rt"><option value="0">Water</option><option value="1">Food</option><option value="2">Medical</option><option value="3">Cloths</option></select>
+    <input class="item-qty" type="number" placeholder="Qty"/>
+    <input class="item-crit" type="number" placeholder="Crit"/>
+    <button class="warn" type="button">X</button>
+  `;
+  div.querySelector('button').onclick = ()=>div.remove();
+  document.getElementById('items').appendChild(div);
+}
+
+// Functions
+async function setRMO(){
+  try{
+    const addr = document.getElementById('in-rmo').value.trim();
+    const tx = await contract.setResourceMappingOwner(addr);
+    setStatus("Setting RMO...");
+    await tx.wait();
+    setStatus("RMO set");
+  }catch(e){setStatus(readableError(e),true);}
+}
+
+async function registerProvider(){
+  try{
+    const did=document.getElementById('in-prov-did').value.trim();
+    const name=document.getElementById('in-prov-name').value.trim();
+    const tx = await contract.registerProvider(did,name);
+    setStatus("Registering...");
+    await tx.wait();
+    setStatus("Provider registered");
+  }catch(e){setStatus(readableError(e),true);}
+}
+
+async function createDemand(){
+  try{
+    const did = document.getElementById('in-cr-did').value.trim();
+    const rows = [...document.querySelectorAll('#items .row')];
+    const rts=[], qtys=[], crits=[];
+    for(const r of rows){
+      rts.push(Number(r.querySelector('.item-rt').value));
+      qtys.push(BigInt(r.querySelector('.item-qty').value||'0'));
+      crits.push(Number(r.querySelector('.item-crit').value||'0'));
+    }
+    const tx = await contract.createDemandRequest(did,rts,qtys,crits);
+    setStatus("Creating demand...");
+    await tx.wait();
+    setStatus("Demand created");
+  }catch(e){setStatus(readableError(e),true);}
+}
+
+async function loadMatrix() {
+  try {
+    const [DNos, DIDs, resources, qtys, statuses, updateds] = await contract.viewDemandMatrix();
+    if (!DNos.length) {
+      document.getElementById("matrix-wrap").innerHTML = `<div class="hint">No demand entries found.</div>`;
+      document.getElementById("btn-download-csv").style.display = "none";
+      return;
+    }
+    const resHeader = resources.map(r => `<th>${r}</th>`).join("");
+    let csv = ["DNO,DID,Name,Row," + resources.join(",")];
+    const rowsHtml = DNos.map((dno, i) => {
+      const qtyRow = qtys[i].map(q=>`${q}`);
+      const flagRow = statuses[i].map(s=>`${s}`);
+      const updRow  = updateds[i].map(ts => ts && Number(ts)!==0 ? new Date(Number(ts)*1000).toLocaleString() : "-");
+      const name = DIDs[i] || "-";
+      csv.push([dno,DIDs[i],name,"Qty",...qtyRow].join(","));
+      csv.push([dno,DIDs[i],name,"Flag",...flagRow].join(","));
+      csv.push([dno,DIDs[i],name,"Updated",...updRow].join(","));
+      return `
+        <tr>
+          <td rowspan="3">${dno}</td>
+          <td rowspan="3">${DIDs[i]}</td>
+          <td rowspan="3">${name}</td>
+          <td><b>Qty</b></td>
+          <td>${qtyRow.join("</td><td>")}</td>
+        </tr>
+        <tr>
+          <td><b>Flag</b></td>
+          <td>${flagRow.join("</td><td>")}</td>
+        </tr>
+        <tr>
+          <td><b>Updated</b></td>
+          <td>${updRow.join("</td><td>")}</td>
+        </tr>`;
+    }).join("");
+    lastMatrixCSV = csv.join("\n");
+    document.getElementById("btn-download-csv").style.display = "inline-block";
+    document.getElementById("matrix-wrap").innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">DNO</th>
+            <th rowspan="2">DID</th>
+            <th rowspan="2">Name</th>
+            <th>Row</th>
+            <th colspan="${resources.length}">Resources</th>
+          </tr>
+          <tr><th></th>${resHeader}</tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    `;
+  } catch (e) { console.error(e); setStatus(readableError(e), true); }
+}
+
+function downloadMatrixCSV(){
+  const blob = new Blob([lastMatrixCSV], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "demand_matrix.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function loadByDNo() {
+  try {
+    const dno = Number(document.getElementById('in-dno').value);
+    const [did, resources, qtys, crits, statuses, created, updated] = await contract.viewDemandsByDNo(dno);
+
+    if (!resources.length) {
+      document.getElementById('bydno-wrap').innerHTML = `<div class="hint">No demands found for this DNo.</div>`;
+      return;
+    }
+
+    // Build row cells
+    const qtyRow = qtys.map(q => `${q}`);
+    const flagRow = statuses.map(s => `${s}`);
+    const updRow  = updated.map(ts => ts && Number(ts) !== 0 ? new Date(Number(ts)*1000).toLocaleString() : "-");
+
+    // For consistency, use DID as "Name" placeholder (replace with provider name if ABI supports it)
+    const name = did || "-";
+
+    const resHeader = resources.map(r => `<th>${r}</th>`).join("");
+
+    // Build grouped table rows
+    const rows = `
+      <tr>
+        <td rowspan="3">${dno}</td>
+        <td rowspan="3">${did}</td>
+        <td rowspan="3">${name}</td>
+        <td><b>Qty</b></td>
+        <td>${qtyRow.join("</td><td>")}</td>
+      </tr>
+      <tr>
+        <td><b>Flag</b></td>
+        <td>${flagRow.join("</td><td>")}</td>
+      </tr>
+      <tr>
+        <td><b>Updated</b></td>
+        <td>${updRow.join("</td><td>")}</td>
+      </tr>
+    `;
+
+    // Render table
+    document.getElementById('bydno-wrap').innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">DNO</th>
+            <th rowspan="2">DID</th>
+            <th rowspan="2">Name</th>
+            <th>Row</th>
+            <th colspan="${resources.length}">Resources</th>
+          </tr>
+          <tr>
+            <th></th>${resHeader}
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  } catch (e) {
+    console.error(e);
+    setStatus(readableError(e), true);
+  }
+}
+
+
+async function loadAggregates(){
+  try{
+    const [r,qty] = await contract.viewAggregateDemands();
+    let html='<table><tr><th>Resource</th><th>Total</th></tr>';
+    for(let i=0;i<r.length;i++) html+=`<tr><td>${r[i]}</td><td>${qty[i]}</td></tr>`;
+    html+='</table>';
+    document.getElementById('agg-wrap').innerHTML=html;
+  }catch(e){setStatus(readableError(e),true);}
+}
+
+async function viewTotal(){
+  try{
+    const t = await contract.viewTotalDemandNos();
+    document.getElementById('misc-wrap').textContent = `Total Demand Nos: ${t}`;
+  }catch(e){setStatus(readableError(e),true);}
+}
+
+// Bind
+document.getElementById('btnConnect').onclick = connect;
+document.getElementById('btn-refresh').onclick = ()=>setStatus('Refreshed');
+document.getElementById('btn-set-rmo').onclick = setRMO;
+document.getElementById('btn-register').onclick = registerProvider;
+document.getElementById('btn-add-item').onclick = addItemRow;
+document.getElementById('btn-create').onclick = createDemand;
+document.getElementById('btn-matrix').onclick = loadMatrix;
+document.getElementById('btn-download-csv').onclick = downloadMatrixCSV;
+document.getElementById('btn-by-dno').onclick = loadByDNo;
+document.getElementById('btn-agg').onclick = loadAggregates;
+document.getElementById('btn-total').onclick = viewTotal;
+
+// start with one item
+addItemRow();
+</script>
+</body>
+</html>

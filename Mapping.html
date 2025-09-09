@@ -302,7 +302,7 @@ function downloadAllocationCSV() {
         lastDemandData = { grouped, timestamp, matrixId: id };
 
         let html = `<h3>📌 Demand Matrix | Created: ${timestamp}</h3>`;
-        html += "<table><tr><th>DID</th><th>DNO</th><th>WATER</th><th>MEDICINE</th><th>FOOD</th><th>CLOTHS</th></tr>";
+        html += "<table><tr><th>DID</th><th>DNO</th><th>WATER</th><th>FOOD</th><th>MEDICINE</th><th>CLOTHS</th></tr>";
         Object.values(grouped).forEach(row => {
           html += `<tr>
             <td>${row.DID}</td>
@@ -392,4 +392,5 @@ function downloadAllocationCSV() {
   </script>
 </body>
 </html>
+
 

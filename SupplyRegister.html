@@ -81,12 +81,6 @@
 
 <button id="btn-connect">Connect MetaMask</button>
 <button id="btn-switch">Switch to Sepolia</button>
-<div>
-  <label>Contract Address:
-    <input id="contractAddress" placeholder="0x804EE274fcD9dD4A082705DD16491e2F7d98531b" style="width:420px" />
-  </label>
-  <button id="btn-save">Save</button>
-</div>
 <div id="status" class="muted">Not connected.</div>
 
 <h2>Registration Status</h2>
@@ -100,15 +94,23 @@
 
 <h2>Register Provider</h2>
 <div>
-  <label>Name: <input id="provName" /></label>  <label>Location:</label> <select id="provLocation"> <option value="">-- Select Location --</option> <option>Shivaji Nagar</option> <option>Dehu Road</option> <option>Talegaon</option>    <option>Hadapsar</option>
-          <option>Pimple Saudagar</option>
-          <option>Kharadi</option>
-          <option>Wakad / Magarpatta</option>
-          <option>Vishrantwadi</option>
-          <option>Kalyani Nagar</option>
-          <option>Kothrud / Karvenagar</option>
-        </select>
-               <label>Resource Types:</label>  <label><input type="checkbox" class="resType" value="0"> Water</label>
+  <label>Name: <input id="provName" /></label>  
+  <label>Location:</label> 
+  <select id="provLocation"> 
+    <option value="">-- Select Location --</option> 
+    <option>Shivaji Nagar</option> 
+    <option>Dehu Road</option> 
+    <option>Talegaon</option>    
+    <option>Hadapsar</option>
+    <option>Pimple Saudagar</option>
+    <option>Kharadi</option>
+    <option>Wakad / Magarpatta</option>
+    <option>Vishrantwadi</option>
+    <option>Kalyani Nagar</option>
+    <option>Kothrud / Karvenagar</option>
+  </select>
+  <label>Resource Types:</label>  
+  <label><input type="checkbox" class="resType" value="0"> Water</label>
   <label><input type="checkbox" class="resType" value="1"> Food</label>
   <label><input type="checkbox" class="resType" value="2"> Medical</label>
   <label><input type="checkbox" class="resType" value="3"> Cloths</label><br/>
@@ -138,7 +140,6 @@
 <h2>Contract Balance (Admin/Owner Only)</h2>
 <div>
   <button id="btn-refreshBalance">Refresh Balance</button>
-  
   <pre id="contractBalance">Balance: 0 wei</pre>
 </div>
 
@@ -154,6 +155,7 @@
 <script>
 const CHAIN_ID_HEX = '0xaa36a7'; // Sepolia
 const REGISTRATION_FEE_WEI = 100000n; // 100000 wei
+const CONTRACT_ADDRESS = "0xffde0933664f6c1B1ff8654E4F0B5f1153f0B44B"; // fixed address
 let provider, signer, contract;
 
 const ABI = [
@@ -179,10 +181,8 @@ function parseEthersError(e) {
   return JSON.stringify(e);
 }
 function ensureContract() {
-  const addr=$('contractAddress').value.trim();
-  if(!addr||!ethers.isAddress(addr)) throw new Error('Set a valid contract address first.');
   if(!signer) throw new Error('Connect MetaMask first.');
-  contract=new ethers.Contract(addr, ABI, signer);
+  contract=new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
   return contract;
 }
 
@@ -194,9 +194,7 @@ async function connect(){
     signer=await provider.getSigner();
     const net=await provider.getNetwork();
     setStatus(`Connected: ${await signer.getAddress()} on chain ${net.chainId}`);
-    const saved=localStorage.getItem('supplierRegistryoz_address');
-    if(saved) $('contractAddress').value=saved;
-    if($('contractAddress').value.trim()){ try{ ensureContract(); await refreshRegStatus(); await $('btn-refreshBalance').onclick(); }catch(_){} }
+    try{ ensureContract(); await refreshRegStatus(); await $('btn-refreshBalance').onclick(); }catch(_){} 
   }catch(e){ setStatus('Connection failed: '+parseEthersError(e),'error'); }
 }
 async function switchToSepolia(){
@@ -216,13 +214,6 @@ async function switchToSepolia(){
 
 $('btn-connect').onclick=connect;
 $('btn-switch').onclick=switchToSepolia;
-$('btn-save').onclick=()=>{
-  const addr=$('contractAddress').value.trim();
-  if(!ethers.isAddress(addr)){ alert('Invalid contract address'); return; }
-  localStorage.setItem('supplierRegistryoz_address', addr);
-  setStatus('Saved contract address.');
-  if(signer){ try{ ensureContract(); refreshRegStatus(); }catch(_){} }
-};
 
 $('btn-openReg').onclick=async()=>{ try{ ensureContract(); const tx=await contract.openRegistration(); setStatus(`Tx ${tx.hash} sent, waiting...`); await tx.wait(); await refreshRegStatus(); setStatus('Registration opened','success'); }catch(e){ setStatus('Error: '+parseEthersError(e),'error'); } };
 $('btn-closeReg').onclick=async()=>{ try{ ensureContract(); const tx=await contract.closeRegistration(); setStatus(`Tx ${tx.hash} sent, waiting...`); await tx.wait(); await refreshRegStatus(); setStatus('Registration closed','success'); }catch(e){ setStatus('Error: '+parseEthersError(e),'error'); } };
@@ -312,8 +303,6 @@ $('btn-withdraw').onclick=async()=>{
 };
 
 window.addEventListener('load', async()=>{
-  const saved=localStorage.getItem('supplierRegistryoz_address');
-  if(saved) $('contractAddress').value=saved;
   if(window.ethereum){
     provider=new ethers.BrowserProvider(window.ethereum);
     try{
@@ -321,7 +310,7 @@ window.addEventListener('load', async()=>{
       signer=await provider.getSigner();
       const net=await provider.getNetwork();
       setStatus(`Auto-connected: ${await signer.getAddress()} on chain ${net.chainId}`);
-      if($('contractAddress').value.trim()){ try{ ensureContract(); await refreshRegStatus(); await $('btn-refreshBalance').onclick(); }catch(_){} }
+      try{ ensureContract(); await refreshRegStatus(); await $('btn-refreshBalance').onclick(); }catch(_){} 
     }catch(e){ setStatus('Auto-connect failed: '+parseEthersError(e),'error'); }
   }
 });
@@ -332,6 +321,3 @@ if(window.ethereum){
 </script>
 </body>
 </html>
-
-
-

@@ -22,23 +22,21 @@
   .row{display:flex;gap:8px;flex-wrap:wrap}
   .row > *{flex:1}
   
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-  color: #000; /* all table text black */
-  background: #fff; /* white background for the whole table */
-}
-
-th, td {
-  border: 1px solid #000; /* black lines around each cell */
-  padding: 8px 10px;
-  text-align: left;
-  font-size: .92rem;
-  background: #fff; /* ensure cells have white background */
-}
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    color: #000;
+    background: #fff;
+  }
+  th, td {
+    border: 1px solid #000;
+    padding: 8px 10px;
+    text-align: left;
+    font-size: .92rem;
+    background: #fff;
+  }
   .hint{color:var(--muted);font-size:.85rem}
-  .pill{display:inline-block;padding:.2rem .5rem;border-radius:999px;background:#1f2937}
   .ok{color:var(--ok)} .bad{color:var(--danger)}
   .status{white-space:pre-wrap;background:#0b1220;border:1px dashed #1f2937;padding:10px;border-radius:12px;margin-top:10px;color:#cbd5e1}
   .foot{margin-top:24px;color:#222;font-size:.85rem}
@@ -60,7 +58,7 @@ th, td {
     </div>
 
     <div class="card">
-         <div class="row">
+      <div class="row">
         <button id="btnMyRes">My Resources</button>
       </div>
       <div id="myResTable"></div>
@@ -115,78 +113,74 @@ th, td {
       <div class="row" style="margin-top:8px">
         <button id="btnUpdate">Update Quantity</button>
       </div>
-      <div class="hint">If you already set a resource, this updates it and refreshes its updatedAt (flag stays <b>PA</b> if it was PA, otherwise <b>NA</b>).</div>
+      <div class="hint">If you already set a resource, this updates it and refreshes its updatedAt.</div>
     </div>
   </div>
 
-  <div class="grid g2" style="margin-top:16px">
-    <div class="card">
-      <h2>Admin/Owner: Form Controls</h2>
-      <div class="row">
-        <button id="btnOpen">Open Form</button>
-        <button class="warn" id="btnClose">Close Form</button>
-      </div>
-      <div class="hint">Only contract <b>owner or admin</b> can open/close resource form.</div>
-    </div>
-
-    <div class="card">
-      <h2>Admin/Owner: View Supplier by ID</h2>
-      <div class="row">
-        <div>
-          <label>Supplier ID</label>
-          <input id="viewId" type="number" min="1" placeholder="e.g., 1" />
+  <!-- 🔹 ADMIN / OWNER ONLY SECTION -->
+  <div id="adminSection" style="display:none">
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h2>Admin/Owner: Form Controls</h2>
+        <div class="row">
+          <button id="btnOpen">Open Form</button>
+          <button class="warn" id="btnClose">Close Form</button>
         </div>
       </div>
-      <div class="row" style="margin-top:8px">
-        <button id="btnViewById">View Details</button>
-      </div>
-      <div id="viewByIdTable" style="margin-top:8px"></div>
-    </div>
-  </div>
 
-  <div class="grid g2" style="margin-top:16px">
-    <div class="card">
-      <h2>Admin/Owner: Suppliers by Resource Type</h2>
-      <div class="row">
-        <div>
-          <label>Resource Type</label>
-          <select id="byType">
-            <option value="0">Water</option>
-            <option value="1">Food</option>
-            <option value="2">Medical</option>
-            <option value="3">Cloths</option>
-          </select>
+      <div class="card">
+        <h2>Admin/Owner: View Supplier by ID</h2>
+        <div class="row">
+          <div>
+            <label>Supplier ID</label>
+            <input id="viewId" type="number" min="1" placeholder="e.g., 1" />
+          </div>
         </div>
+        <div class="row" style="margin-top:8px">
+          <button id="btnViewById">View Details</button>
+        </div>
+        <div id="viewByIdTable" style="margin-top:8px"></div>
       </div>
-      <div class="row" style="margin-top:8px">
-        <button id="btnByType">View</button>
-      </div>
-      <div id="byTypeTable"></div>
     </div>
 
-    <div class="card">
-      <h2>Admin/Owner: Supplier Matrix</h2>
-      <div class="row">
-        <button id="btnMatrix">Refresh Matrix</button>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h2>Admin/Owner: Suppliers by Resource Type</h2>
+        <div class="row">
+          <div>
+            <label>Resource Type</label>
+            <select id="byType">
+              <option value="0">Water</option>
+              <option value="1">Food</option>
+              <option value="2">Medical</option>
+              <option value="3">Cloths</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="btnByType">View</button>
+        </div>
+        <div id="byTypeTable"></div>
       </div>
-      <div id="matrixTable" style="margin-top:8px"></div>
+
+      <div class="card">
+        <h2>Admin/Owner: Supplier Matrix</h2>
+        <div class="row">
+          <button id="btnMatrix">Refresh Matrix</button>
+          <button class="secondary" id="btnDownloadCSV" style="display:none">⬇️ Download CSV</button>
+        </div>
+        <div id="matrixTable" style="margin-top:8px"></div>
+      </div>
     </div>
-  </div>
-  <div class="row">
-  <button id="btnMatrix">Refresh Matrix</button>
-  <button class="secondary" id="btnDownloadCSV" style="display:none">⬇️ Download CSV</button>
-</div>
-<div id="matrixTable" style="margin-top:8px"></div>
 
-
-  <div class="grid" style="margin-top:16px">
-    <div class="card">
-      <h2>Aggregate Supplies</h2>
-      <div class="row">
-        <button id="btnAgg">View Aggregates</button>
+    <div class="grid" style="margin-top:16px">
+      <div class="card">
+        <h2>Aggregate Supplies</h2>
+        <div class="row">
+          <button id="btnAgg">View Aggregates</button>
+        </div>
+        <div id="aggTable" style="margin-top:8px"></div>
       </div>
-      <div id="aggTable" style="margin-top:8px"></div>
-      <div class="hint">Sums for Water, Food, Medical, Cloths. Counts only resources with flag NA or PA.</div>
     </div>
   </div>
 
@@ -198,11 +192,9 @@ th, td {
  *  CONFIG
  *  ======================= */
 const CONTRACT_ADDRESS = "0xa0df09A1E7Fd6b629FD96a062359E0e42B970289";
-const EXPECTED_CHAIN_ID = "11155111"; // e.g. "0x5" for Goerli, "0x7a69" for Hardhat
+const EXPECTED_CHAIN_ID = "11155111";
 
-/** Minimal ABI for ResourceProvider used in the UI */
 const ABI = [
-  // reads
   "function owner() view returns (address)",
   "function admin() view returns (address)",
   "function resourceFormOpen() view returns (bool)",
@@ -212,8 +204,6 @@ const ABI = [
   "function viewSuppliersByResourceType(uint8 _resourceType) view returns (uint256[] providerIds, string[] providerNames, uint256[] quantities, string[] flags)",
   "function viewSupplierMatrix() view returns (uint256[] providerIds, string[] providerNames, string[] resourceTypeList, uint256[][] quantityMatrix, string[][] flagMatrix, string[][] lastUpdatedMatrix)",
   "function viewAggregateSupplies() view returns (string[] resourceTypes, uint256[] totalSupplies)",
-
-  // writes
   "function openResourceForm()",
   "function closeResourceForm()",
   "function setResourceQuantity(uint8 _resourceType, uint256 _quantity)",
@@ -229,44 +219,30 @@ const els = {
   network: document.getElementById("network"),
   formState: document.getElementById("formState"),
   status: document.getElementById("statusBox"),
-
-  // my resources
   btnMyRes: document.getElementById("btnMyRes"),
   myResTable: document.getElementById("myResTable"),
   btnChkCompliance: document.getElementById("btnChkCompliance"),
   complianceBox: document.getElementById("complianceBox"),
-
-  // set
   setResType: document.getElementById("setResType"),
   setQty: document.getElementById("setQty"),
   btnSet: document.getElementById("btnSet"),
-
-  // update
   updResType: document.getElementById("updResType"),
   updQty: document.getElementById("updQty"),
   btnUpdate: document.getElementById("btnUpdate"),
-
-  // admin/owner open/close
   btnOpen: document.getElementById("btnOpen"),
   btnClose: document.getElementById("btnClose"),
-
-  // view by id
   viewId: document.getElementById("viewId"),
   btnViewById: document.getElementById("btnViewById"),
   viewByIdTable: document.getElementById("viewByIdTable"),
-
-  // by type
   byType: document.getElementById("byType"),
   btnByType: document.getElementById("btnByType"),
   byTypeTable: document.getElementById("byTypeTable"),
-
-  // matrix
   btnMatrix: document.getElementById("btnMatrix"),
   matrixTable: document.getElementById("matrixTable"),
-
-  // aggregate
+  btnDownloadCSV: document.getElementById("btnDownloadCSV"),
   btnAgg: document.getElementById("btnAgg"),
   aggTable: document.getElementById("aggTable"),
+  adminSection: document.getElementById("adminSection")
 };
 
 function setStatus(msg, isErr=false) {
@@ -274,50 +250,34 @@ function setStatus(msg, isErr=false) {
   els.status.style.color = isErr ? "#fecaca" : "#cbd5e1";
 }
 
-function fmtTs(ts) {
-  if (!ts || ts === "-" || ts === "0") return "-";
-  const d = new Date(Number(ts) * 1000);
-  if (isNaN(d.getTime())) {
-    // sometimes the contract already returns a string; just return it
-    return String(ts);
-  }
-  return d.toLocaleString();
-}
-
-function resNameFromIdx(i) {
-  return ["Water","Food","Medical","Cloths"][Number(i)] || `#${i}`;
-}
-
 async function connect() {
   try {
-    if (!window.ethereum) {
-      setStatus("No wallet found. Install MetaMask.", true);
-      return;
-    }
+    if (!window.ethereum) { setStatus("No wallet found. Install MetaMask.", true); return; }
     await window.ethereum.request({ method: "eth_requestAccounts" });
 
     provider = new ethers.BrowserProvider(window.ethereum);
     const net = await provider.getNetwork();
-    if (EXPECTED_CHAIN_ID && ("0x" + net.chainId.toString(16)) !== EXPECTED_CHAIN_ID) {
-      setStatus(`Wrong network. Switch to ${EXPECTED_CHAIN_ID}. Current: 0x${net.chainId.toString(16)}`, true);
-    }
-
     signer = await provider.getSigner();
     myAddr = await signer.getAddress();
-
     contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
-
     ownerAddr = await contract.owner();
     adminAddr = await contract.admin();
 
     els.whoami.textContent = `Connected: ${myAddr}`;
     els.network.textContent = `Network: 0x${net.chainId.toString(16)} | Owner: ${ownerAddr} | Admin: ${adminAddr}`;
-
     await refreshFormState();
+
+    // 🔹 Show admin UI only for owner/admin
+    if (myAddr.toLowerCase() === ownerAddr.toLowerCase() || myAddr.toLowerCase() === adminAddr.toLowerCase()) {
+      els.adminSection.style.display = "block";
+    } else {
+      els.adminSection.style.display = "none";
+    }
+
     setStatus("Connected.");
   } catch (e) {
     console.error(e);
-    setStatus(readableError(e), true);
+    setStatus(e.message, true);
   }
 }
 
@@ -326,18 +286,10 @@ async function refreshFormState() {
     if (!contract) return;
     const open = await contract.resourceFormOpen();
     els.formState.textContent = `Resource Form: ${open ? "OPEN ✅" : "CLOSED ⛔"}`;
-  } catch (e) {
-    console.error(e);
-  }
+  } catch {}
 }
 
-function readableError(err) {
-  // ethers v6: err.shortMessage/err.info?.error?.message may contain revert
-  return (err?.shortMessage || err?.info?.error?.message || err?.message || String(err))
-    .replace("execution reverted: ", "")
-    .replace("VM Exception while processing transaction: reverted with reason string ", "");
-}
-
+// (rest of your existing JS: viewMyResources, compliance, set/update qty, admin functions, matrix, aggregates)
 /** ========== My Resources & Compliance ========== */
 async function viewMyResources() {
   try {
@@ -579,7 +531,6 @@ async function viewAggregates() {
     setStatus(readableError(e), true);
   }
 }
-
 /** ========== Bind UI ========== */
 els.btnConnect.onclick = connect;
 els.btnCheckRole.onclick = async () => {
@@ -609,7 +560,8 @@ els.btnViewById.onclick = viewSupplierById;
 els.btnByType.onclick = viewByResourceType;
 els.btnMatrix.onclick = viewMatrix;
 els.btnAgg.onclick = viewAggregates;
+
+els.btnConnect.onclick = connect;
 </script>
 </body>
 </html>
-

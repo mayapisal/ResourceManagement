@@ -81,7 +81,12 @@
 
 <button id="btn-connect">Connect MetaMask</button>
 <button id="btn-switch">Switch to Sepolia</button>
-
+<div>
+  <label>Contract Address:
+    <input id="contractAddress" placeholder="0x804EE274fcD9dD4A082705DD16491e2F7d98531b" style="width:420px" />
+  </label>
+  <button id="btn-save">Save</button>
+</div>
 <div id="status" class="muted">Not connected.</div>
 
 <h2>Registration Status</h2>
@@ -147,7 +152,6 @@
 </div>
 
 <script>
- const contractAddress="0x804EE274fcD9dD4A082705DD16491e2F7d98531b";
 const CHAIN_ID_HEX = '0xaa36a7'; // Sepolia
 const REGISTRATION_FEE_WEI = 100000n; // 100000 wei
 let provider, signer, contract;
@@ -328,5 +332,6 @@ if(window.ethereum){
 </script>
 </body>
 </html>
+
 
 

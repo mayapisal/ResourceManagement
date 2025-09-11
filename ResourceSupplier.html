@@ -253,6 +253,19 @@ function setStatus(msg, isErr=false) {
   els.status.textContent = msg || "";
   els.status.style.color = isErr ? "#fecaca" : "#cbd5e1";
 }
+function fmtTs(ts) {
+  if (!ts || ts === "-" || ts === "0") return "-";
+  const d = new Date(Number(ts) * 1000);
+  if (isNaN(d.getTime())) {
+    // sometimes the contract already returns a string; just return it
+    return String(ts);
+  }
+  return d.toLocaleString();
+}
+
+function resNameFromIdx(i) {
+  return ["Water","Food","Medical","Cloths"][Number(i)] || `#${i}`;
+}
 
 async function connect() {
   try {
@@ -295,8 +308,13 @@ async function refreshFormState() {
     setStatus(e.message, true);
   }
 }
+function readableError(err) {
+  // ethers v6: err.shortMessage/err.info?.error?.message may contain revert
+  return (err?.shortMessage || err?.info?.error?.message || err?.message || String(err))
+    .replace("execution reverted: ", "")
+    .replace("VM Exception while processing transaction: reverted with reason string ", "");
+}
 
-// (rest of your existing JS: viewMyResources, compliance, set/update qty, admin functions, matrix, aggregates)
 /** ========== My Resources & Compliance ========== */
 async function viewMyResources() {
   try {
@@ -514,7 +532,6 @@ async function viewMatrix() {
   }
 }
 
-
 async function viewAggregates() {
   try {
     const [types, totals] = await contract.viewAggregateSupplies();
@@ -539,6 +556,7 @@ async function viewAggregates() {
     setStatus(readableError(e), true);
   }
 }
+
 /** ========== Bind UI ========== */
 els.btnConnect.onclick = connect;
 els.btnCheckRole.onclick = async () => {
@@ -568,11 +586,11 @@ els.btnViewById.onclick = viewSupplierById;
 els.btnByType.onclick = viewByResourceType;
 els.btnMatrix.onclick = viewMatrix;
 els.btnAgg.onclick = viewAggregates;
-
-els.btnConnect.onclick = connect;
+  els.btnConnect.onclick = connect;
 </script>
 </body>
 </html>
+
 
 
 

@@ -172,7 +172,7 @@
     </div>
   </div>
   <div class="row">
-  <button id="btnMatrix">Refresh Matrix</button>
+ 
   <button class="secondary" id="btnDownloadCSV" style="display:none">⬇️ Download CSV</button>
 </div>
 <div id="matrixTable" style="margin-top:8px"></div>
@@ -290,7 +290,10 @@ async function refreshFormState() {
     if (!contract) return;
     const open = await contract.resourceFormOpen();
     els.formState.textContent = `Resource Form: ${open ? "OPEN ✅" : "CLOSED ⛔"}`;
-  } catch {}
+  } catch (e) {
+    console.error(e);
+    setStatus(e.message, true);
+  }
 }
 
 // (rest of your existing JS: viewMyResources, compliance, set/update qty, admin functions, matrix, aggregates)
@@ -570,6 +573,7 @@ els.btnConnect.onclick = connect;
 </script>
 </body>
 </html>
+
 
 
 

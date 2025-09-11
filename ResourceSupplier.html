@@ -46,7 +46,7 @@
 <div class="wrap">
   <div class="grid g2">
     <div class="card">
-      <h1>ResourceProvider dApp</h1>
+      <h1>ResourceProvider</h1>
       <div class="row">
         <button id="btnConnect">🔌 Connect Wallet</button>
         <button class="secondary" id="btnCheckRole">Check My Role</button>
@@ -166,12 +166,14 @@
       <div class="card">
         <h2>Admin/Owner: Supplier Matrix</h2>
         <div class="row">
-          <button id="btnMatrix">Refresh Matrix</button>
+          <button id="btnMatrix">Refresh Matrix</button>  </div>
+           <div id="matrixTable" style="margin-top:8px"></div>
+              </div>
+        <div class="row">
+           <button id="btnMatrix">Refresh Matrix</button> 
           <button class="secondary" id="btnDownloadCSV" style="display:none">⬇️ Download CSV</button>
-        </div>
-        <div id="matrixTable" style="margin-top:8px"></div>
-      </div>
-    </div>
+         </div>
+     <div id="matrixTable" style="margin-top:8px"></div>
 
     <div class="grid" style="margin-top:16px">
       <div class="card">
@@ -565,4 +567,5 @@ els.btnConnect.onclick = connect;
 </script>
 </body>
 </html>
+
 

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Resource Mapping DApp</title>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f4f6f8; }
+    table { border-collapse: collapse; width: 95%; margin: 15px 0; }
+    th, td { border: 1px solid #999; padding: 8px; text-align: center; }
+    th { background: #3498db; color: white; }
+    button { padding: 6px 12px; margin: 5px; border-radius: 6px; border: none; background: #3498db; color: white; cursor: pointer; }
+    button:hover { background: #2980b9; }
+    input { padding: 6px; margin: 5px; }
+    .error { color: red; font-weight: bold; }
+    h2, h3 { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <h2>📊 Resource Mapping DApp</h2>
+  <button onclick="connectWallet()">🔗 Connect Wallet</button>
+  <p id="wallet">Not Connected</p>
+  <p id="errorMsg" class="error"></p>
+
+  <!-- Allocation Section -->
+  <h3>⚡ Run Allocation</h3>
+  <input id="maxDemandsInput" type="number" placeholder="Max demands to allocate">
+  <button onclick="runAllocation()">▶️ Run Allocation</button>
+  <p id="allocationStatus"></p>
+
+  <h3>All Allocation Matrices</h3>
+  <button onclick="getAllMatrixIds()">📊 Load All Matrices</button>
+  <div id="matrices"></div>
+
+  <h3>Matrix Views</h3>
+  <input id="matrixIdInput" type="number" placeholder="Enter Matrix ID">
+  <div>
+    <button onclick="getAllocationMatrix()">📋 Allocation Matrix</button>
+    <button onclick="downloadAllocationCSV()">⬇️ Download Allocation CSV</button>
+  </div>
+  <div id="allocationMatrix"></div>
+
+  <h3>🔎 Allocation Details</h3>
+  <input id="allocationIdInput" type="number" placeholder="Enter Allocation ID">
+  <button onclick="getAllocationDetails()">📄 Get Allocation</button>
+  <div id="allocationDetails"></div>
+
+  <!-- Supplier Section -->
+  <h3>🏭 Supplier Matrix</h3>
+  <button onclick="getSupplierMatrix()">📊 Load Supplier Matrix</button>
+  <div id="supplierMatrix"></div>
+  <button id="downloadSupplierCSV" style="display:none" onclick="downloadSupplierCSV()">⬇️ Download Supplier CSV</button>
+
+  <!-- Demand Section -->
+  <h3>📥 Demand Matrix</h3>
+  <button onclick="getDemandMatrix()">📊 Load Demand Matrix</button>
+  <div id="demandMatrix"></div>
+  <button id="downloadDemandCSV" style="display:none" onclick="downloadDemandCSV()">⬇️ Download Demand CSV</button>
+
+  <script>
+    let web3, mapping1, demandProvider, resourceProvider, currentAccount;
+    let lastAllocationData = null;
+    let lastSupplierCSV = null;
+    let lastDemandCSV = null;
+
+    // 🔹 Contract Addresses
+    const mapping1Address = "0x0311688aa5C8a5C9fFa855dc197Af2763C60dFc0";
+    const demandProviderAddress = "0x0Fd8c75153d66265604Dbca4FB9f8B0eD9dD583A";
+    const resourceProviderAddress = "0xa0df09A1E7Fd6b629FD96a062359E0e42B970289";
+
+    // 🔹 ABIs
+    const mapping1Abi = [  {
+        "inputs":[{"internalType":"uint256","name":"maxDemands","type":"uint256"}],
+        "name":"runAllocation",
+        "outputs":[],
+        "stateMutability":"nonpayable","type":"function"
+      },
+      {
+        
+        "inputs":[{"internalType":"uint256","name":"matrixId","type":"uint256"}],
+        "name":"getMatrixDetails",
+        "outputs":[
+          {"internalType":"uint256","name":"id","type":"uint256"},
+          {"internalType":"uint256[]","name":"allocationIds","type":"uint256[]"},
+          {"internalType":"uint256[]","name":"allocationDNos","type":"uint256[]"},
+          {"internalType":"string[]","name":"allocatedTo","type":"string[]"},
+          {"internalType":"string[]","name":"resourceTypes","type":"string[]"},
+          {"internalType":"uint256[]","name":"allocatedQty","type":"uint256[]"}
+        ],
+        "stateMutability":"view","type":"function"
+      },
+      {
+        "inputs":[],"name":"getAllMatrixIds",
+        "outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],
+        "stateMutability":"view","type":"function"
+      },
+      {
+        "inputs":[{"internalType":"uint256","name":"allocationId","type":"uint256"}],
+        "name":"getAllocationDetails",
+        "outputs":[
+          {"internalType":"uint256","name":"","type":"uint256"},
+          {"internalType":"uint256","name":"","type":"uint256"},
+          {"internalType":"string","name":"","type":"string"},
+          {"internalType":"uint256","name":"","type":"uint256"},
+          {"internalType":"string","name":"","type":"string"},
+          {"internalType":"string","name":"","type":"string"},
+          {"internalType":"uint256","name":"","type":"uint256"}
+        ],
+        "stateMutability":"view","type":"function"
+      },
+      {
+        "inputs":[{"internalType":"uint256","name":"","type":"uint256"}],
+        "name":"allocationMatrices",
+        "outputs":[
+          {"internalType":"uint256","name":"matrixId","type":"uint256"},
+          {"internalType":"uint256","name":"timestamp","type":"uint256"}
+        ],
+        "stateMutability":"view","type":"function"
+      },
+      
+    
+     ];
+    const demandProviderAbi = [
+      {
+        "inputs": [],
+        "name": "viewDemandMatrix",
+        "outputs": [
+          { "internalType": "uint256[]", "name": "", "type": "uint256[]" },
+          { "internalType": "string[]",   "name": "", "type": "string[]"   },
+          { "internalType": "string[]",   "name": "", "type": "string[]"   },
+          { "internalType": "uint256[][]", "name": "", "type": "uint256[][]" },
+          { "internalType": "string[][]",  "name": "", "type": "string[][]"  },
+          { "internalType": "uint256[][]", "name": "", "type": "uint256[][]" } // optional
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      }
+    ];
+    const resourceProviderAbi = [
+      {
+        "inputs": [],
+        "name": "viewSupplierMatrix",
+        "outputs": [
+          {"internalType":"uint256[]","name":"providerIds","type":"uint256[]"},
+          {"internalType":"string[]","name":"providerNames","type":"string[]"},
+          {"internalType":"string[]","name":"resourceTypeList","type":"string[]"},
+          {"internalType":"uint256[][]","name":"quantityMatrix","type":"uint256[][]"},
+          {"internalType":"string[][]","name":"flagMatrix","type":"string[][]"},
+          {"internalType":"string[][]","name":"lastUpdatedMatrix","type":"string[][]"}
+        ],
+        "stateMutability":"view",
+        "type":"function"
+      }
+    ];
+
+    function showError(msg) {
+      document.getElementById("errorMsg").innerText = msg;
+      setTimeout(() => { document.getElementById("errorMsg").innerText = ""; }, 5000);
+    }
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: "eth_requestAccounts" });
+        const accounts = await web3.eth.getAccounts();
+        currentAccount = accounts[0];
+        document.getElementById("wallet").innerText = "Connected: " + currentAccount;
+
+        mapping1 = new web3.eth.Contract(mapping1Abi, mapping1Address);
+        demandProvider = new web3.eth.Contract(demandProviderAbi, demandProviderAddress);
+        resourceProvider = new web3.eth.Contract(resourceProviderAbi, resourceProviderAddress);
+      } else {
+        showError("Please install MetaMask!");
+      }
+    }
+
+    // ========== ALLOCATION ==========
+    async function runAllocation() {
+      try {
+        const maxDemands = document.getElementById("maxDemandsInput").value;
+        await mapping1.methods.runAllocation(maxDemands).send({ from: currentAccount });
+        document.getElementById("allocationStatus").innerText = "✅ Allocation executed!";
+      } catch (err) {
+        showError("Error running allocation: " + err.message);
+      }
+    }
+
+    async function getAllocationDetails() {
+      try {
+        const id = document.getElementById("allocationIdInput").value;
+        const data = await mapping1.methods.getAllocationDetails(id).call();
+        const html = `
+          <h4>Allocation #${data[0]}</h4>
+          <p>DNO: ${data[1]}</p>
+          <p>Status: ${data[2]}</p>
+          <p>Supplier ID: ${data[3]}</p>
+          <p>Supplier Flag: ${data[4]}</p>
+          <p>Resource: ${data[5]}</p>
+          <p>Qty: ${data[6]}</p>
+        `;
+        document.getElementById("allocationDetails").innerHTML = html;
+      } catch (err) {
+        showError("Error fetching allocation details: " + err.message);
+      }
+    }
+
+    async function getAllMatrixIds() {
+      try {
+        const ids = await mapping1.methods.getAllMatrixIds().call();
+        let html = "<table><tr><th>Matrix ID</th></tr>";
+        ids.forEach(id => { html += `<tr><td>${id}</td></tr>`; });
+        html += "</table>";
+        document.getElementById("matrices").innerHTML = html;
+      } catch (err) {
+        showError("Error fetching matrices: " + err.message);
+      }
+    }
+
+    async function getAllocationMatrix() {
+      try {
+        const id = document.getElementById("matrixIdInput").value;
+        const data = await mapping1.methods.getMatrixDetails(id).call();
+        const matrixInfo = await mapping1.methods.allocationMatrices(id).call();
+        const timestamp = new Date(matrixInfo.timestamp * 1000).toLocaleString();
+        const allResources = ["WATER", "FOOD","MEDICINE", "CLOTHS"];
+        const rows = [];
+        for (let i = 0; i < data[1].length; i++) {
+          const row = { "Allocation no": data[1][i], "DNO": data[2][i] };
+          allResources.forEach(r => row[r] = "-");
+          const resource = data[4][i].toUpperCase();
+          if (allResources.includes(resource)) row[resource] = data[5][i];
+          rows.push(row);
+        }
+        lastAllocationData = { rows, timestamp, matrixId: id, headers: ["Allocation no", "DNO", ...allResources] };
+        let html = `<h3>📋 Allocation Matrix #${id} | Created: ${timestamp}</h3>`;
+        html += "<table><tr>";
+        lastAllocationData.headers.forEach(h => html += `<th>${h}</th>`);
+        html += "</tr>";
+        rows.forEach(r => {
+          html += "<tr>";
+          lastAllocationData.headers.forEach(h => html += `<td>${r[h]}</td>`);
+          html += "</tr>";
+        });
+        html += "</table>";
+        document.getElementById("allocationMatrix").innerHTML = html;
+      } catch (err) {
+        showError("Error fetching allocation matrix: " + err.message);
+      }
+    }
+
+    function downloadAllocationCSV() {
+      if (!lastAllocationData) return showError("Load allocation matrix first!");
+      const { headers, rows, matrixId, timestamp } = lastAllocationData;
+      let csv = headers.join(",") + "\n";
+      rows.forEach(r => { csv += headers.map(h => r[h]).join(",") + "\n"; });
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `AllocationMatrix_${matrixId}_${timestamp}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ========== SUPPLIER ==========
+    async function getSupplierMatrix() {
+      try {
+        const data = await resourceProvider.methods.viewSupplierMatrix().call();
+        const [ids, names, typeList, qtyMx, flagMx, updMx] = data;
+        if (!ids.length) {
+          document.getElementById("supplierMatrix").innerHTML = "<p>No suppliers found.</p>";
+          document.getElementById("downloadSupplierCSV").style.display = "none";
+          return;
+        }
+        const resHeader = typeList.map(t => `<th>${t}</th>`).join("");
+        let csvRows = [["SupplierID","Name","Row", ...typeList]];
+        const rows = ids.map((id, i) => {
+          const qtyRow = (qtyMx[i] || []).map(q => q);
+          const flagRow = (flagMx[i] || []).map(f => f);
+          const updRow = (updMx[i] || []).map(ts => ts);
+          csvRows.push([id, names[i], "Qty", ...qtyRow]);
+          csvRows.push([id, names[i], "Flag", ...flagRow]);
+          csvRows.push([id, names[i], "Updated", ...updRow]);
+          return `
+            <tr><td rowspan="3">${id}</td><td rowspan="3">${names[i]}</td><td><b>Qty</b></td><td>${qtyRow.join("</td><td>")}</td></tr>
+            <tr><td><b>Flag</b></td><td>${flagRow.join("</td><td>")}</td></tr>
+            <tr><td><b>Updated</b></td><td>${updRow.join("</td><td>")}</td></tr>
+          `;
+        }).join("");
+        const html = `
+          <table>
+            <thead>
+              <tr><th rowspan="2">Supplier ID</th><th rowspan="2">Name</th><th>Row</th><th colspan="${typeList.length}">Resources</th></tr>
+              <tr><th></th>${resHeader}</tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+        document.getElementById("supplierMatrix").innerHTML = html;
+        lastSupplierCSV = csvRows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+        document.getElementById("downloadSupplierCSV").style.display = "inline-block";
+      } catch (err) {
+        showError("Error fetching supplier matrix: " + err.message);
+      }
+    }
+
+    function downloadSupplierCSV() {
+      if (!lastSupplierCSV) return showError("Load supplier matrix first!");
+      const blob = new Blob([lastSupplierCSV], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Supplier_Matrix.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // ========== DEMAND ==========
+    async function getDemandMatrix() {
+      try {
+        const data = await demandProvider.methods.viewDemandMatrix().call();
+        console.log("viewDemandMatrix raw:", data);
+        const ids      = data[0] || data.demandIds || [];
+        const names    = data[1] || data.demandNames || [];
+        const typeList = data[2] || data.resourceTypeList || [];
+        const qtyMx    = data[3] || data.quantityMatrix || [];
+        const statusMx = data[4] || data.statusMatrix || [];
+        const updatedMx = data[5] || data.updatedMatrix || [];
+        if (!ids || ids.length === 0) {
+          document.getElementById("demandMatrix").innerHTML = "<p>No demands found.</p>";
+          document.getElementById("downloadDemandCSV").style.display = "none";
+          return;
+        }
+        const resHeader = typeList.map(t => `<th>${t}</th>`).join("");
+        let csvRows = [["DNO","DID","Row", ...typeList]];
+        const rowsHtml = ids.map((dno, i) => {
+          const qRow = (qtyMx[i] || []).map(q => String(q));
+          const sRow = (statusMx[i] || []).map(s => String(s));
+          const uRow = (updatedMx[i] || []).map(ts => {
+            try { return (ts && Number(ts) !== 0) ? new Date(Number(ts) * 1000).toLocaleString() : "-"; }
+            catch { return String(ts || "-"); }
+          });
+          csvRows.push([dno, names[i] || "-", "Qty", ...qRow]);
+          csvRows.push([dno, names[i] || "-", "Status", ...sRow]);
+          if (uRow.length) csvRows.push([dno, names[i] || "-", "Updated", ...uRow]);
+          const updatedRowHtml = uRow.length ? `<tr><td><b>Updated</b></td><td>${uRow.join("</td><td>")}</td></tr>` : "";
+          return `
+            <tr>
+              <td rowspan="${uRow.length ? 3 : 2}">${dno}</td>
+              <td rowspan="${uRow.length ? 3 : 2}">${names[i] || "-"}</td>
+              <td><b>Qty</b></td><td>${qRow.join("</td><td>")}</td>
+            </tr>
+            <tr><td><b>Status</b></td><td>${sRow.join("</td><td>")}</td></tr>
+            ${updatedRowHtml}
+          `;
+        }).join("");
+        lastDemandCSV = csvRows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+        document.getElementById("downloadDemandCSV").style.display = "inline-block";
+        document.getElementById("demandMatrix").innerHTML = `
+          <table>
+            <thead>
+              <tr><th rowspan="3">DNO</th><th rowspan="3">DID</th><th>Row</th><th colspan="${typeList.length}">Resources</th></tr>
+              <tr><th></th>${resHeader}</tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>`;
+      } catch (err) {
+        console.error("getDemandMatrix error:", err);
+        showError("Error fetching demand matrix: " + (err.message || err));
+      }
+    }
+
+    function downloadDemandCSV() {
+      if (!lastDemandCSV) return showError("Load demand matrix first!");
+      const blob = new Blob([lastDemandCSV], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Demand_Matrix.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

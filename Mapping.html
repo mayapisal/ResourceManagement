@@ -52,13 +52,6 @@
   <button onclick="getAllocationDetails()">📄 Get Allocation</button>
   <div id="allocationDetails"></div>
 
-  <h3>📌 Latest Allocation by Demand + Resource</h3>
-  <input id="demandIdInput" type="number" placeholder="Demand ID">
-  <input id="resourceTypeInput" type="text" placeholder="Resource (e.g. WATER)">
-  <button onclick="getLatestAllocation()">🔍 Get Latest Allocation</button>
-  <p id="latestAllocation"></p>
-
-
 
   <script>
     let web3, mapping1, demandProvider;
@@ -198,17 +191,7 @@
       }
     }
 
-    async function getLatestAllocation() {
-      try {
-        const demandId = document.getElementById("demandIdInput").value;
-        const resource = document.getElementById("resourceTypeInput").value;
-        const allocId = await mapping1.methods.getLatestAllocationForDemandResource(demandId, resource).call();
-        document.getElementById("latestAllocation").innerText = "Latest Allocation ID: " + allocId;
-      } catch (err) {
-        showError("Error fetching latest allocation: " + err.message);
-      }
-    }
-    
+      
     async function getAllMatrixIds() {
       try {
         const ids = await mapping1.methods.getAllMatrixIds().call();
@@ -392,6 +375,7 @@ function downloadAllocationCSV() {
   </script>
 </body>
 </html>
+
 
 
 

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>CrossPhaseUtilities — Sepolia dApp</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #f6f8fa; --card: #ffffff; --muted: #475569;
+      --accent: #0b74de; --ok: #16a34a; --err: #dc2626;
+    }
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:20px;background:var(--bg);color:#0f172a}
+    .wrap{max-width:980px;margin:0 auto}
+    h1{margin:0 0 8px;font-size:20px}
+    .card{background:var(--card);border-radius:10px;padding:16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(2,6,23,0.06)}
+    button{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    button.ghost{background:#fff;color:var(--accent);border:1px solid #cbd5e1}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    pre{white-space:pre-wrap;background:#0f172a;color:#e6eef8;padding:10px;border-radius:8px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border:1px solid #e6eef8;padding:8px;text-align:left;font-size:13px}
+    th{background:#f1f5f9}
+    .status{margin-top:10px;padding:10px;border-radius:8px}
+    .status.ok{background:#ecfdf5;color:var(--ok);border:1px solid #bbf7d0}
+    .status.err{background:#fff1f2;color:var(--err);border:1px solid #fecaca}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>CrossPhaseUtilities — Sepolia</h1>
+
+    <!-- Wallet -->
+    <div class="card">
+      <button id="btn-connect">Connect MetaMask</button>
+      <p id="whoami">Not connected</p>
+      <div id="statusBox" class="status" style="display:none"></div>
+    </div>
+
+    <!-- Aggregate -->
+    <div class="card">
+      <h3>Aggregate Demand & Supply</h3>
+      <div class="row">
+        <button id="btn-getAgg">Get Aggregate Demand & Supply</button>
+        <button id="btn-download-agg" class="ghost" style="display:none">Download CSV</button>
+      </div>
+      <div id="aggResult"></div>
+    </div>
+
+    <!-- Shortage Report -->
+    <div class="card">
+      <h3>Resource State Report (Shortages)</h3>
+      <div class="row">
+        <button id="btn-report">Generate Resource State Report</button>
+        <button id="btn-download-report" class="ghost" style="display:none">Download CSV</button>
+      </div>
+      <pre id="reportPre">(no report yet)</pre>
+    </div>
+
+    <!-- Compliance Report -->
+    <div class="card">
+      <h3>Compliance Report</h3>
+      <div class="row">
+        <button id="btn-compliance">Get Compliance Report</button>
+        <button id="btn-download-compliance" class="ghost" style="display:none">Download CSV</button>
+      </div>
+      <pre id="compliancePre">(no compliance output yet)</pre>
+    </div>
+  </div>
+
+<script>
+  // 🔹 Hardcode contract address here
+  const CONTRACT_ADDRESS = "0xa30693443fde8f8D5eB0FA15c320156c2619dbB2";  
+
+  const ABI = [
+    "function getAggregateDemandAndSupply() view returns (string[] resourceTypes, uint256[] demandQuantities, uint256[] supplyQuantities)",
+    "function generateResourceStateReport() view returns (string)",
+    "function getComplianceReport() view returns (string)"
+  ];
+
+  let provider, signer, contract;
+  const $ = id => document.getElementById(id);
+
+  function showStatus(msg,type='ok'){const b=$('statusBox');b.style.display='block';b.className='status '+(type==='err'?'err':'ok');b.textContent=msg;}
+  function parseErr(e){return e?.reason||e?.message||JSON.stringify(e);}
+
+  function downloadCSV(content, prefix){
+    const d=new Date();const stamp=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}`;
+    const name=`${prefix}_${stamp}.csv`;
+    const blob=new Blob([content],{type:"text/csv"});const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);
+  }
+
+  async function connect(){
+    try{
+      if(!window.ethereum) throw new Error("Install MetaMask");
+      provider=new ethers.BrowserProvider(window.ethereum);
+      await provider.send("eth_requestAccounts",[]);
+      signer=await provider.getSigner();
+      $('whoami').textContent=`Connected: ${await signer.getAddress()}`;
+      contract=new ethers.Contract(CONTRACT_ADDRESS,ABI,signer);
+    }catch(e){showStatus(parseErr(e),'err');}
+  }
+
+  async function getAgg(){
+    try{
+      const res=await contract.getAggregateDemandAndSupply();
+      const [resTypes,dQty,sQty]=res;
+      let rows=[];let html="<table><tr><th>Resource</th><th>Demand</th><th>Supply</th></tr>";
+      for(let i=0;i<resTypes.length;i++){rows.push([resTypes[i],dQty[i].toString(),sQty[i].toString()]);html+=`<tr><td>${resTypes[i]}</td><td>${dQty[i]}</td><td>${sQty[i]}</td></tr>`;}
+      html+="</table>";$('aggResult').innerHTML=html;
+      $('btn-download-agg').style.display="inline-block";
+      $('btn-download-agg').onclick=()=>downloadCSV("Resource,Demand,Supply\n"+rows.map(r=>r.join(",")).join("\n"),"aggregate");
+    }catch(e){showStatus(parseErr(e),'err');}
+  }
+
+  async function getReport(){
+    try{
+      const txt=await contract.generateResourceStateReport();
+      $('reportPre').textContent=txt;
+      $('btn-download-report').style.display="inline-block";
+      $('btn-download-report').onclick=()=>downloadCSV("Report\n\""+txt.replace(/\"/g,'""')+"\"", "resource_shortage");
+    }catch(e){showStatus(parseErr(e),'err');}
+  }
+
+  async function getCompliance(){
+    try{
+      const txt=await contract.getComplianceReport();
+      $('compliancePre').textContent=txt;
+      $('btn-download-compliance').style.display="inline-block";
+      $('btn-download-compliance').onclick=()=>downloadCSV("Compliance\n\""+txt.replace(/\"/g,'""')+"\"", "compliance");
+    }catch(e){showStatus(parseErr(e),'err');}
+  }
+
+  $('btn-connect').onclick=connect;
+  $('btn-getAgg').onclick=getAgg;
+  $('btn-report').onclick=getReport;
+  $('btn-compliance').onclick=getCompliance;
+</script>
+</body>
+</html>
